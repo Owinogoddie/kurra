@@ -4,19 +4,29 @@ from ultralytics import YOLO
 import os
 import numpy as np
 
+# ============================================
+# CONFIGURATION
+# ============================================
+SHOW_REALTIME_FRAMES = True  # Set to False to disable real-time display
+VIDEO_PATH = '/home/jetson/videos/20.mp4'  # Update this path for your Jetson Nano
+OUTPUT_PATH = '/home/jetson/videos/output_video_bytetrack.mp4'  # Output path
+MODEL_PATH = 'yolo11s.pt'  # YOLO model path
+
+# ============================================
 # Load YOLO 11 model
-model = YOLO('yolo11s.pt')
+# ============================================
+model = YOLO(MODEL_PATH)
 
 # YOLO 11 uses the same class list as YOLOv8
 class_list = ['person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus', 'train', 'truck', 'boat', 'traffic light', 'fire hydrant', 'stop sign', 'parking meter', 'bench', 'bird', 'cat', 'dog', 'horse', 'sheep', 'cow', 'elephant', 'bear', 'zebra', 'giraffe', 'backpack', 'umbrella', 'handbag', 'tie', 'suitcase', 'frisbee', 'skis', 'snowboard', 'sports ball', 'kite', 'baseball bat', 'baseball glove', 'skateboard', 'surfboard', 'tennis racket', 'bottle', 'wine glass', 'cup', 'fork', 'knife', 'spoon', 'bowl', 'banana', 'apple', 'sandwich', 'orange', 'broccoli', 'carrot', 'hot dog', 'pizza', 'donut', 'cake', 'chair', 'couch', 'potted plant', 'bed', 'dining table', 'toilet', 'tv', 'laptop', 'mouse', 'remote', 'keyboard', 'cell phone', 'microwave', 'oven', 'toaster', 'sink', 'refrigerator', 'book', 'clock', 'vase', 'scissors', 'teddy bear', 'hair drier', 'toothbrush']
 
 # Video input path
-video_path = '/content/20.mp4'
+video_path = VIDEO_PATH
 
 # Check if video file exists
 if not os.path.exists(video_path):
     print(f"Error: Video file not found at {video_path}")
-    print("Please check the file path and make sure the video is uploaded correctly.")
+    print("Please check the file path and make sure the video exists.")
     exit()
 
 # Initialize video capture
@@ -38,6 +48,7 @@ print(f"Original dimensions: {original_width}x{original_height}")
 print(f"Target dimensions: 1020x570 (will resize each frame)")
 print(f"FPS: {fps}")
 print(f"Total frames: {total_frames}")
+print(f"Real-time display: {'ENABLED' if SHOW_REALTIME_FRAMES else 'DISABLED'}")
 
 # Set target dimensions - 1020x570 as requested
 target_width = 1020
@@ -45,7 +56,7 @@ target_height = 570
 
 # Define output video writer
 fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-output_path = '/content/output_video_bytetrack.mp4'
+output_path = OUTPUT_PATH
 out = cv2.VideoWriter(output_path, fourcc, fps, (target_width, target_height))
 
 # Check if video writer opened successfully
@@ -265,6 +276,19 @@ while True:
     # Write the processed frame to output video
     out.write(frame)
 
+    # Display frame in real-time if enabled
+    if SHOW_REALTIME_FRAMES:
+        cv2.imshow('Vehicle Counter - YOLO11 + ByteTrack', frame)
+        
+        # Press 'q' to quit, 'p' to pause
+        key = cv2.waitKey(1) & 0xFF
+        if key == ord('q'):
+            print("\nUser requested to quit. Stopping processing...")
+            break
+        elif key == ord('p'):
+            print("\nPaused. Press any key to continue...")
+            cv2.waitKey(0)
+
     # Print progress every 100 frames
     if count % 100 == 0:
         current_vehicles = len(results[0].boxes) if len(results[0].boxes) > 0 else 0
@@ -273,6 +297,10 @@ while True:
 # Release video capture and writer
 cap.release()
 out.release()
+
+# Close all OpenCV windows if they were opened
+if SHOW_REALTIME_FRAMES:
+    cv2.destroyAllWindows()
 
 print(f"\nVideo processing completed with ByteTrack!")
 print(f"Total frames processed: {count}")
@@ -310,16 +338,7 @@ if os.path.exists(output_path):
     # Display unique track IDs for verification
     print(f"\nTotal unique vehicle IDs tracked: {len(tracked_vehicles)}")
 
-    # Download the processed video (for Google Colab)
-    try:
-        from google.colab import files
-        files.download(output_path)
-        print("\nVideo download initiated!")
-    except ImportError:
-        print(f"\nVideo saved locally at: {output_path}")
-    except Exception as e:
-        print(f"Error downloading file: {e}")
-        print(f"Video saved locally at: {output_path}")
+    print(f"\nVideo saved at: {output_path}")
 else:
     print("Error: Output video file was not created!")
 
